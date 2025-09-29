@@ -1,0 +1,104 @@
+
+
+Bootstrap: library
+From: ubuntu:22.04
+	
+%files
+	./pca_script.R    		/PcaDeps/
+	
+	./shiny_app.R     		/AppDeps/
+	./shiny_server.R  		/AppDeps/
+	./shiny_ui.R      		/AppDeps/
+
+%environment
+	# export X=
+
+%post
+	# Standard system update
+	export DEBIAN_FRONTEND=noninteractive
+	apt-get update -y
+	apt-get upgrade -y
+	# Install R requirements
+	apt-get install -y --no-install-recommends \
+        build-essential gfortran \
+        libreadline-dev libcurl4-openssl-dev libssl-dev libxml2-dev \
+        zlib1g-dev libbz2-dev liblzma-dev \
+        libpcre2-dev libpng-dev libjpeg-dev libtiff-dev \
+        libfreetype6-dev libharfbuzz-dev libfribidi-dev libicu-dev \
+        libsqlite3-dev
+	
+	# These installations allow us to add the CRAN mirror, from where r-base can be downloaded
+	apt-get install -y --no-install-recommends \
+		software-properties-common dirmngr gnupg ca-certificates
+
+	# Add CRAN mirror (choose based on your Ubuntu release, here 22.04 = jammy)
+	apt-key adv --no-tty --keyserver keyserver.ubuntu.com --recv-keys 51716619E084DAB9
+	echo "deb https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" \
+		> /etc/apt/sources.list.d/cran-r.list
+
+	apt-get update
+		
+	
+	# Install R
+    apt-get install -y r-base r-base-dev
+	
+	# Install R libraries
+    R -e "install.packages('shiny')"
+    R -e "install.packages('shinyjs')"
+    R -e "install.packages('jsonlite')"
+    R -e "install.packages('ggplot2')"
+
+%runscript
+	# Remain inside the working directory
+	Rscript /PcaDeps/pca_script.R ${*}
+
+%test
+	
+%labels
+    Author SomeAuthor
+    Version v1.0.0
+
+%help
+	This is a toy container which calculates Principal Components on the IRIS dataset, and then creates plots of selected components against each other.
+	The container accepts a single argument, which is the path to a JSON file.
+	# Usage: singularity run run_pca_script.sif params.json
+	#
+	# Example params.json:
+	# [
+	#   { "n_components": 2, "plot_components": [1,2] },
+	#   { "n_components": 3, "plot_components": [1,3] }
+	# ]
+	
+	
+################################################################################
+## Application self-configurator
+################################################################################
+
+%apprun self-configurator
+    # Move into the script directory so that relative paths will be resolved correctly
+	cd /AppDeps/
+	Rscript ./shiny_app.R ${*}
+	
+%apptest self-configurator
+	
+%applabels self-configurator
+    Author SomeAuthor
+    Version v1.0.0
+	
+%apphelp self-configurator
+	This app launches a web app that creates valid input configurations for the main script of the container.
+	The webapp will be served at http://127.0.0.1:9283.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
